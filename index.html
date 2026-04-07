@@ -9,29 +9,26 @@
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 <style>
  body { background: #F7BFC3; margin: 0; overflow: hidden; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
-header { background: #d1a2a5; height: 80px; display: flex; align-items: center; padding: 0 25px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
-.container { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; touch-action: none; }
-#fb { background: transparent; display: block; }
-.page { background: white; overflow: hidden; }
-canvas { width: 100.6%; height: 100%; object-fit: fill; position: relative; left: -0.3%; }
-video { width: 100.6%; height: 100%; object-fit: cover; background: black; position: relative; left: -0.3%; }
-#L { position: fixed; inset: 0; background: #F7BFC3; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; font-size: 11px; }
-.spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+header { background: #d9a8ab; height: 80px; display: flex; align-items: center; padding: 0 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.box { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+#fb { background: transparent; }
+.page { background: white; overflow: hidden; border: none; }
+canvas { width: calc(100% + 1.2px); height: 100%; object-fit: fill; position: relative; left: -0.6px; }
+video { width: 100.5%; height: 100%; object-fit: cover; background: black; position: relative; left: -0.25%; }
+#L { position: fixed; inset: 0; background: #F7BFC3; z-index: 1000; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; }
 </style>
 </head>
 <body>
-<div id="L"><div class="spinner"></div>Sincronizando...</div>
+<div id="L">Sincronizando Libro...</div>
 <header><img src="logo.png" style="height:45px"></header>
-<div class="container" id="C"><div id="fb"></div></div>
+<div class="box" id="B"><div id="fb"></div></div>
 <script>
- let pf = null; 
+ let pf = null;
  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 async function init() {
  try {
- const resp = await fetch("./documento.pdf"); if(!resp.ok) throw new Error("No se encuentra documento.pdf");
- const buffer = await resp.arrayBuffer();
-const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+ const res = await fetch("./documento.pdf"); const buf = await res.arrayBuffer();
+const pdf = await pdfjsLib.getDocument({data: buf}).promise;
 const el = document.getElementById("fb"); const first = await pdf.getPage(1); const bVp = first.getViewport({scale:1});
 for(let i=1; i<=pdf.numPages; i++) {
  const d = document.createElement("div"); d.className="page";
@@ -45,10 +42,11 @@ d.appendChild(c);
  el.appendChild(d);
  }
 pf = new St.PageFlip(el, { width: Math.floor(bVp.width), height: Math.floor(bVp.height), size: "stretch", showCover: true, autoCenter: true, drawShadow: false });
-const fit = () => { if(!pf) return; const r = bVp.width/bVp.height; const h = document.getElementById("C").clientHeight * 0.94; el.style.height = Math.floor(h)+"px"; el.style.width = Math.floor(h*r*2)+"px"; pf.update(); };
-pf.loadFromHTML(document.querySelectorAll(".page")); window.onresize = fit; fit(); document.getElementById("L").style.display="none";
+pf.loadFromHTML(document.querySelectorAll(".page"));
+const fit = () => { if(!pf || typeof pf.update !== "function") return; const r = bVp.width/bVp.height; const h = document.getElementById("B").clientHeight * 0.92; el.style.height = Math.floor(h)+"px"; el.style.width = Math.floor(h*r*2)+"px"; pf.update(); };
+window.onresize = fit; setTimeout(() => { fit(); document.getElementById("L").style.display="none"; }, 500);
 pf.on("flip", (e) => { document.querySelectorAll("video").forEach(v => { const p = parseInt(v.getAttribute("data-v")); if([e.data, e.data+1].includes(p-1)) v.play().catch(()=>{}); else v.pause(); }); });
-} catch(e) { document.getElementById("L").innerHTML = "FALLO: " + e.message; }
+} catch(e) { document.getElementById("L").innerHTML = "Error: " + e.message; }
  }
  window.onload = init;
 </script>
