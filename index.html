@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EatOut Magazine</title>
+<link rel="icon" href="favicon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<style>
+ body { background: #F7BFC3; margin: 0; overflow: hidden; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+header { height: 80px; display: flex; align-items: center; padding: 0 20px; }
+.container { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+#fb { background: transparent; }
+.page { background: white; overflow: hidden; }
+canvas { width: calc(100% + 3px); height: 100%; object-fit: fill; position: relative; left: -1.5px; }
+video { width: 100.5%; height: 100%; object-fit: cover; background: black; position: relative; left: -0.25%; }
+#L { position: fixed; inset: 0; background: #F7BFC3; z-index: 1000; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="L">Cargando Experiencia...</div>
+<header><img src="logo.png" style="height:50px"></header>
+<div class="container"><div id="fb"></div></div>
+<script>
+ pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+async function init() {
+ try {
+ const resp = await fetch("./documento.pdf"); const buffer = await resp.arrayBuffer();
+const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+const el = document.getElementById("fb"); const first = await pdf.getPage(1); const bVp = first.getViewport({scale:1});
+for(let i=1; i<=pdf.numPages; i++) {
+ const d = document.createElement("div"); d.className="page";
+if(i === 3 && "video.mp4") {
+ d.innerHTML = '<video loop playsinline data-v="' + i + '"><source src="video.mp4" type="video/mp4"></video>';
+} else {
+ const c = document.createElement("canvas"); const p = await pdf.getPage(i); const v = p.getViewport({scale:2});
+c.height = Math.floor(v.height); c.width = Math.floor(v.width); await p.render({canvasContext:c.getContext("2d"), viewport:v}).promise;
+d.appendChild(c); 
+}
+ el.appendChild(d);
+ }
+const pf = new St.PageFlip(el, { width: Math.floor(bVp.width), height: Math.floor(bVp.height), size: "stretch", showCover: true, autoCenter: true, drawShadow: false });
+const fit = () => { const r = bVp.width/bVp.height; const h = window.innerHeight * 0.85; el.style.height = h+"px"; el.style.width = (h*r*2)+"px"; pf.update(); };
+window.onresize = fit; fit(); pf.loadFromHTML(document.querySelectorAll(".page")); document.getElementById("L").style.display="none";
+pf.on("flip", (e) => { document.querySelectorAll("video").forEach(v => { const p = parseInt(v.getAttribute("data-v")); if([e.data, e.data+1].includes(p-1)) v.play().catch(()=>{}); else v.pause(); }); });
+} catch(e) { document.getElementById("L").innerHTML = "Fallo de carga: " + e.message; }
+ }
+ window.onload = init;
+</script>
+</body>
+</html>
