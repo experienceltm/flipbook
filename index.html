@@ -2,34 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>EatOut 10</title>
 <link rel="icon" href="favicon.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 <style>
- body { background: #F7BFC3; margin: 0; overflow: hidden; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
-header { background: #d9a8ab; height: 80px; display: flex; align-items: center; padding: 0 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-.box { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-#fb { background: transparent; }
-.page { background: white; overflow: hidden; border: none; }
-canvas { width: calc(100% + 1.2px); height: 100%; object-fit: fill; position: relative; left: -0.6px; }
-video { width: 100.5%; height: 100%; object-fit: cover; background: black; position: relative; left: -0.25%; }
-#L { position: fixed; inset: 0; background: #F7BFC3; z-index: 1000; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; }
+ body { background: #F7BFC3; margin: 0; overflow: hidden; font-family: sans-serif; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
+header { background: #d9a8ab; height: 75px; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 10; }
+.box { flex: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; touch-action: none; }
+#fb { background: transparent; display: block; }
+.page { background: white; overflow: hidden; }
+canvas { width: calc(100% + 1.6px); height: 100%; object-fit: fill; position: relative; left: -0.8px; }
+video { width: 100.6%; height: 100%; object-fit: cover; background: black; position: relative; left: -0.3%; }
+#L { position: fixed; inset: 0; background: #F7BFC3; z-index: 1000; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+.spinner { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
-<div id="L">Sincronizando Libro...</div>
-<header><img src="logo.png" style="height:45px"></header>
+<div id="L"><div class="spinner"></div>Sincronizando...</div>
+<header><img src="logo.png" style="height:40px"></header>
 <div class="box" id="B"><div id="fb"></div></div>
 <script>
- let pf = null;
+ let pf = null; let bVp = null; 
  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 async function init() {
  try {
  const res = await fetch("./documento.pdf"); const buf = await res.arrayBuffer();
 const pdf = await pdfjsLib.getDocument({data: buf}).promise;
-const el = document.getElementById("fb"); const first = await pdf.getPage(1); const bVp = first.getViewport({scale:1});
+const el = document.getElementById("fb"); const first = await pdf.getPage(1); bVp = first.getViewport({scale:1});
 for(let i=1; i<=pdf.numPages; i++) {
  const d = document.createElement("div"); d.className="page";
 if(i === 3 && "video.mp4") {
@@ -41,10 +43,16 @@ d.appendChild(c);
 }
  el.appendChild(d);
  }
-pf = new St.PageFlip(el, { width: Math.floor(bVp.width), height: Math.floor(bVp.height), size: "stretch", showCover: true, autoCenter: true, drawShadow: false });
+pf = new St.PageFlip(el, { width: Math.floor(bVp.width), height: Math.floor(bVp.height), size: "stretch", showCover: true, autoCenter: true, drawShadow: false, useMouseEvents: true });
 pf.loadFromHTML(document.querySelectorAll(".page"));
-const fit = () => { if(!pf || typeof pf.update !== "function") return; const r = bVp.width/bVp.height; const h = document.getElementById("B").clientHeight * 0.92; el.style.height = Math.floor(h)+"px"; el.style.width = Math.floor(h*r*2)+"px"; pf.update(); };
-window.onresize = fit; setTimeout(() => { fit(); document.getElementById("L").style.display="none"; }, 500);
+const fit = () => {
+ if(!pf || !bVp) return;
+ const box = document.getElementById("B"); const r = bVp.width/bVp.height;
+const aw = box.clientWidth * 0.96; const ah = box.clientHeight * 0.94;
+let th = ah; let tw = th * r * 2; if(tw > aw) { tw = aw; th = tw / (r * 2); }
+el.style.height = Math.floor(th)+"px"; el.style.width = Math.floor(tw)+"px"; pf.update();
+ };
+window.addEventListener("resize", fit); setTimeout(() => { fit(); document.getElementById("L").style.display="none"; }, 600);
 pf.on("flip", (e) => { document.querySelectorAll("video").forEach(v => { const p = parseInt(v.getAttribute("data-v")); if([e.data, e.data+1].includes(p-1)) v.play().catch(()=>{}); else v.pause(); }); });
 } catch(e) { document.getElementById("L").innerHTML = "Error: " + e.message; }
  }
